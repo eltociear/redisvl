@@ -22,7 +22,8 @@ import redis
 import redis.asyncio as aredis
 from redis.commands.search.indexDefinition import IndexDefinition
 
-from redisvl.query.query import BaseQuery, CountQuery, FilterQuery
+from redisvl.query import BaseQuery, CountQuery, FilterQuery
+from redisvl.query.filter import FilterExpression
 from redisvl.schema import IndexSchema, StorageType
 from redisvl.storage import HashStorage, JsonStorage
 from redisvl.utils.connection import RedisConnection
@@ -412,18 +413,42 @@ class SearchIndex:
 
     @check_modules_present("_redis_conn")
     @check_index_exists()
-    def delete(self, drop: bool = True):
-        """Delete the search index.
+    def delete(self, drop: bool = True, filter_expression: Optional[FilterExpression] = None):
+        """
+        Delete all or part of the indexed data in Redis. Provide an optional
+        FilterExpression object to match and delete based on specific criteria.
+        Otherwise, delete the index with the ability to drop or retain all
+        underlying data.
 
         Args:
             drop (bool, optional): Delete the documents in the index.
                 Defaults to True.
+            filter_expression (FilterExpression, optional): A filter expression
+               for which to match and delete from the index.
 
         raises:
             redis.exceptions.ResponseError: If the index does not exist.
+
+        .. code-block:: python
+
+            # delete the entire index, retaining all data
+            index.delete(drop=False)
+
+            # delete the entire index AND all data
+            index.delete()
+
+            # delete documents that match a specific tag
+            from redisvl.query.filter import Tag
+            index.delete(filter_expression=(Tag("doc_id") == "123"))
         """
-        # Delete the search index
-        self._redis_conn.client.ft(self.name).dropindex(delete_documents=drop)  # type: ignore
+        if filter_expression:
+            query = FilterQuery(filter_expression=filter_expression, return_fields=["id"])
+            for batch in self.query_batch(query):
+                self._redis_conn.client.delete(*[item["id"] for item in batch])
+
+        else:
+            # Delete the search index
+            self._redis_conn.client.ft(self.name).dropindex(delete_documents=drop)  # type: ignore
 
     @check_modules_present("_redis_conn")
     def load(
@@ -641,18 +666,42 @@ class SearchIndex:
 
     @check_async_modules_present("_redis_conn")
     @check_async_index_exists()
-    async def adelete(self, drop: bool = True):
-        """Delete the search index.
+    async def adelete(self, drop: bool = True, filter_expression: Optional[FilterExpression] = None):
+        """
+        Asynchronously delete all or part of the indexed data in Redis. Provide an optional
+        FilterExpression object to match and delete based on specific criteria.
+        Otherwise, delete the index with the ability to drop or retain all
+        underlying data.
 
         Args:
             drop (bool, optional): Delete the documents in the index.
                 Defaults to True.
+            filter_expression (FilterExpression, optional): A filter expression
+               for which to match and delete from the index.
 
-        Raises:
+        raises:
             redis.exceptions.ResponseError: If the index does not exist.
+
+        .. code-block:: python
+
+            # delete the entire index, retaining all data
+            await index.adelete(drop=False)
+
+            # delete the entire index AND all data
+            await index.adelete()
+
+            # delete documents that match a specific tag
+            from redisvl.query.filter import Tag
+            await index.adelete(filter_expression=(Tag("doc_id") == "123"))
         """
-        # Delete the search index
-        await self._redis_conn.client.ft(self.name).dropindex(delete_documents=drop)  # type: ignore
+        if filter_expression:
+            query = FilterQuery(filter_expression=filter_expression, return_fields=["id"])
+            async for batch in self.aquery_batch(query):
+                await self._redis_conn.client.delete(*[item["id"] for item in batch])
+        else:
+            # Delete the search index
+            await self._redis_conn.client.ft(self.name).dropindex(delete_documents=drop)  # type: ignore
+
 
     @check_async_modules_present("_redis_conn")
     async def aload(
