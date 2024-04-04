@@ -10,11 +10,10 @@ repository = "https://github.com/RedisVentures/redisvl"
 documentation = "https://www.redisvl.com"
 keywords = ["ai", "redis", "redis-client", "vector-database", "vector-search"]
 classifiers = [
-  "Programming Language :: Python :: 3.7",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
-  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.11",
+  "License :: MIT License",
 ]
 packages = [{ include = "redisvl", from = "." }]
 
@@ -67,7 +66,7 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]
-target-version = ['py37', 'py38', 'py39', 'py310', 'py311']
+target-version = ['py38', 'py39', 'py310', 'py311']
 exclude = '''
 (
   | \.egg
